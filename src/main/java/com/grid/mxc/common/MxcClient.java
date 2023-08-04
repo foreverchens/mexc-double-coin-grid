@@ -1,9 +1,6 @@
-package com.grid.mxc;
+package com.grid.mxc.common;
 
 import com.alibaba.fastjson.JSON;
-import com.grid.mxc.common.OrderTypeEnum;
-import com.grid.mxc.common.SideTypeEnum;
-import com.grid.mxc.common.SignTool;
 import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
