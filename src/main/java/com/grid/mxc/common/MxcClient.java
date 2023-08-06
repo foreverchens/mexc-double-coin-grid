@@ -108,6 +108,9 @@ public class MxcClient {
 
 		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
 			assert response.body() != null;
+			if (response.code() != 200) {
+				throw new RuntimeException(response.body().string());
+			}
 			return JSON.parseObject(response.body().string()).getString("orderId");
 		}
 	}

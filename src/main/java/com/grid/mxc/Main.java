@@ -8,6 +8,9 @@ import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
+
+import cn.hutool.core.text.CharSequenceUtil;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -63,6 +66,11 @@ public class Main {
 		sellRatio = ratio.add(ratio.multiply(gridRate));
 		buyRatio = ratio.subtract(ratio.multiply(gridRate));
 		eqQtyOfB = priceA.multiply(swapQtyOfA).divide(priceB, 8, RoundingMode.DOWN);
+		log.info("参数列表:");
+		log.info("{}-{},{}-{}", symbolA, priceA, symbolB, priceB);
+		log.info("{}/{}现汇率:{},下一卖出汇率:{}，下一买入汇率:{}", symbolA, symbolB, ratio, sellRatio, buyRatio);
+		log.info("每次交易A卖出数量:{},B卖出数量:{}\n", swapQtyOfA, eqQtyOfB);
+
 	}
 
 
@@ -78,13 +86,15 @@ public class Main {
 				// 所以你的汇率应该用A的最优买单价格和B的最优卖单价格计算。
 				BigDecimal curSellRatio = priceBookA.getBidPrice().divide(priceBookB.getAskPrice(), 8,
 						RoundingMode.DOWN);
-				log.info("[{} < {} < {}]", buyRatio, curSellRatio, sellRatio);
+				log.info("  [{} < {} < {}]", buyRatio, curSellRatio, sellRatio);
 				if (curSellRatio.compareTo(sellRatio) > 0) {
+					log.info("  curSellRatio:{} > sellRatio:{} sell A buy B", curSellRatio, sellRatio);
 					// 卖A买B、
 					exeSellA(priceBookA, priceBookB);
 					// 更新买/卖汇率
 					sellRatio = curSellRatio.add(curSellRatio.multiply(gridRate));
 					buyRatio = curSellRatio.subtract(curSellRatio.multiply(gridRate));
+					log.info("  new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
 					return;
 				}
 
@@ -92,17 +102,24 @@ public class Main {
 				// 所以你的汇率应该用B的最优买单价格和A的最优卖单价格计算。
 				BigDecimal curBuyRatio = priceBookA.getAskPrice().divide(priceBookB.getBidPrice(), 8,
 						RoundingMode.DOWN);
-				log.info("[{} < {} < {}]", buyRatio, curBuyRatio, sellRatio);
+				log.info("  [{} < {} < {}]", buyRatio, curBuyRatio, sellRatio);
 				if (curBuyRatio.compareTo(buyRatio) < 0) {
+					log.info("  curBuyRatio:{} > buyRatio:{},sell B buy A ", curBuyRatio, buyRatio);
 					// 卖B买A
 					exeSellB(priceBookA, priceBookB);
 					// 更新买/卖汇率
 					sellRatio = curBuyRatio.add(curBuyRatio.multiply(gridRate));
 					buyRatio = curBuyRatio.subtract(curBuyRatio.multiply(gridRate));
+					log.info("  new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
 				}
-				TimeUnit.MINUTES.sleep(1);
+				TimeUnit.SECONDS.sleep(10);
 			} catch (Exception ex) {
 				log.error(ex.getMessage(), ex);
+				String msg = ex.getMessage();
+				if (CharSequenceUtil.containsAny(msg, "30005", "10007")) {
+					// 持仓不足以卖出及交易对不支持API、
+					throw new RuntimeException(ex);
+				}
 			}
 		}
 	}
