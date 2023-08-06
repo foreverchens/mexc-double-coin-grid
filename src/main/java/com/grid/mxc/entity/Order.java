@@ -1,8 +1,9 @@
-package com.grid.mxc.entity;/**
- *
- */
+package com.grid.mxc.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 @Data
 @Slf4j
 @ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Order {
 
 	private String symbol;

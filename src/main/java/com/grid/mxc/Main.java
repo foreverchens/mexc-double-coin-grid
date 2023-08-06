@@ -101,31 +101,28 @@ public class Main {
 					sellRatio = curSellRatio.add(curSellRatio.multiply(gridRate));
 					buyRatio = curSellRatio.subtract(curSellRatio.multiply(gridRate));
 					log.info("  new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
-					return;
+					continue;
 				}
 
 				// 检查是否满足汇率买入条件、你可能需要卖出B、然后买入A、
 				// 所以你的汇率应该用B的最优买单价格和A的最优卖单价格计算。
 				BigDecimal curBuyRatio = priceBookA.getAskPrice().divide(priceBookB.getBidPrice(), 8,
 						RoundingMode.DOWN);
-				log.info("  [{} < {} < {}]", buyRatio, curBuyRatio, sellRatio);
+				log.info("	[{} < {} < {}]", buyRatio, curBuyRatio, sellRatio);
 				if (curBuyRatio.compareTo(buyRatio) < 0) {
-					log.info("  curBuyRatio:{} > buyRatio:{},sell B buy A ", curBuyRatio, buyRatio);
+					log.info("	curBuyRatio:{} < buyRatio:{},sell B buy A ", curBuyRatio, buyRatio);
 					// 卖B买A
 					exeSellB(priceBookA, priceBookB);
 					// 更新买/卖汇率
 					sellRatio = curBuyRatio.add(curBuyRatio.multiply(gridRate));
 					buyRatio = curBuyRatio.subtract(curBuyRatio.multiply(gridRate));
-					log.info("  new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
+					log.info("	new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
 				}
 				TimeUnit.SECONDS.sleep(10);
 			} catch (Exception ex) {
 				log.error(ex.getMessage(), ex);
-				String msg = ex.getMessage();
-				if (CharSequenceUtil.containsAny(msg, "30005", "10007")) {
-					// 持仓不足以卖出及交易对不支持API、
-					throw new RuntimeException(ex);
-				}
+				// TODO: 2023/8/6  区分故障和偶发性异常
+				throw new RuntimeException(ex);
 			}
 		}
 	}
@@ -158,10 +155,14 @@ public class Main {
 			sellAQty = sellAQty.subtract(new BigDecimal(order.getExecutedQty()));
 			// 更新最优挂单
 			priceBookA = MxcClient.getPriceBook(symbolA);
+			log.info("	待卖数量:{},本次卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", swapQtyOfA, order.getExecutedQty(),
+					order.getPrice(), order.getCummulativeQuoteQty(), sellACumQuoteQty, sellAQty);
 		}
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyBOrigQuoteQty = sellACumQuoteQty;
+		log.info("	卖A累计获得:{},开始买B", buyBOrigQuoteQty);
 		x = 0;
+		BigDecimal buyBCumQty = BigDecimal.ZERO;
 		while (x++ < tradeDepth && buyBOrigQuoteQty.compareTo(BigDecimal.TEN) > 0) {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookB.getAskPrice();
@@ -178,9 +179,15 @@ public class Main {
 			String quoteQty = order.getCummulativeQuoteQty();
 			// 更新可用余额
 			buyBOrigQuoteQty = buyBOrigQuoteQty.subtract(new BigDecimal(quoteQty));
+			buyBCumQty = buyBCumQty.add(new BigDecimal(order.getExecutedQty()));
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
+			log.info("	本次买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(), order.getExecutedQty(),
+					order.getPrice(), buyBOrigQuoteQty);
 		}
+		log.info("	买B累计花费:{}，累计买入数量:{},平均买入价格:{},留存USD余额:{}", sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBCumQty
+				, (sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1), buyBOrigQuoteQty);
+
 	}
 
 	private static void exeSellB(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
@@ -204,9 +211,13 @@ public class Main {
 			sellBQty = sellBQty.subtract(new BigDecimal(order.getExecutedQty()));
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
+			log.info("  待卖数量:{},本次卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", eqQtyOfB, order.getExecutedQty(),
+					order.getPrice(), order.getCummulativeQuoteQty(), sellBCumQuoteQty, sellBQty);
 		}
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyAOrigQuoteQty = sellBCumQuoteQty;
+		log.info("  卖B累计获得:{}", buyAOrigQuoteQty);
+
 		x = 0;
 		while (x++ < tradeDepth && buyAOrigQuoteQty.compareTo(BigDecimal.TEN) > 0) {
 			// 获取最优一格卖单
@@ -226,12 +237,19 @@ public class Main {
 			buyAOrigQuoteQty = buyAOrigQuoteQty.subtract(new BigDecimal(quoteQty));
 			// 更新最优挂单
 			priceBookA = MxcClient.getPriceBook(symbolA);
+			log.info("  本次买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(), order.getExecutedQty(),
+					order.getPrice(), buyAOrigQuoteQty);
 		}
 	}
 
 
 	public static void main(String[] args) throws Exception {
+		log.info("a");
+		log.warn("a");
+		log.debug("a");
+		log.error("a");
 		init();
-		loop();
+
+		// loop();
 	}
 }
