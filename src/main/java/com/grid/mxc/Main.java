@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -59,6 +60,11 @@ public class Main {
 	}
 
 	public static void init() throws Exception {
+		List<String> supSymbols = MxcClient.getSupSymbols();
+		if (!supSymbols.contains(symbolA) || !supSymbols.contains(symbolB)) {
+			throw new RuntimeException("该交易对不支持api交易,code=10007,自检地址\\https://www.mexc.com/zh-CN/user/openapi");
+		}
+
 		// 合理价格及相关汇率
 		BigDecimal priceA = MxcClient.getPrice(symbolA);
 		BigDecimal priceB = MxcClient.getPrice(symbolB);

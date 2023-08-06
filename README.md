@@ -22,13 +22,14 @@
 
 使用的API端点如下
 
-|            URI            | 类型 |      描述      |
-| :-----------------------: | :--: | :------------: |
-|       /api/v3/time        | GET  | 获取服务器时间 |
-|   /api/v3/ticker/price    | GET  |  获取最新价格  |
-| /api/v3/ticker/bookTicker | GET  |  获取最优挂单  |
-|       /api/v3/order       | GET  |    获取订单    |
-|       /api/v3/order       | POST |    创建订单    |
+|            URI            | 类型 |       描述        |
+| :-----------------------: | :--: | :---------------: |
+|       /api/v3/time        | GET  |  获取服务器时间   |
+|   /api/v3/ticker/price    | GET  |   获取最新价格    |
+| /api/v3/ticker/bookTicker | GET  |   获取最优挂单    |
+|       /api/v3/order       | GET  |     获取订单      |
+|       /api/v3/order       | POST |     创建订单      |
+|  /api/v3/defaultSymbols   | GET  | 获取API支持交易对 |
 
 
 

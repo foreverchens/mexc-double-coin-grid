@@ -1,6 +1,7 @@
 package com.grid.mxc.common;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -58,6 +60,14 @@ public class MxcClient {
 		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
 			assert response.body() != null;
 			return JSON.parseObject(response.body().string()).getString("serverTime");
+		}
+	}
+
+	public static List<String> getSupSymbols() throws Exception {
+		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/defaultSymbols").build();
+		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+			assert response.body() != null;
+			return JSON.parseObject(response.body().string()).getObject("data", new TypeReference<List<String>>() {});
 		}
 	}
 
