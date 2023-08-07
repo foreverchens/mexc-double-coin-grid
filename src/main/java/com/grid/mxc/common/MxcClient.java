@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 抹茶 V3 APi的部分实现
@@ -136,9 +137,17 @@ public class MxcClient {
 
 		Request request =
 				new Request.Builder().url("https://api.mexc.com/api/v3/order?" + SignTool.toQueryStr(params)).header(HEADER_API_KEY, AK).get().build();
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
-			assert response.body() != null;
-			return JSON.parseObject(response.body().string(), Order.class);
-		}
+		int x = 3;
+		// 订单创建成功到订单可查到、存在时间间隔、查失败时重试
+		do {
+			try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+				assert response.body() != null;
+				if (response.code() == 200) {
+					return JSON.parseObject(response.body().string(), Order.class);
+				}
+			}
+			TimeUnit.SECONDS.sleep(1);
+		} while (--x > 0);
+		return new Order();
 	}
 }

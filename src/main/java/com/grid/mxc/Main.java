@@ -1,6 +1,7 @@
 package com.grid.mxc;
 
 
+import com.alibaba.fastjson2.JSON;
 import com.grid.mxc.common.MxcClient;
 import com.grid.mxc.common.OrderTypeEnum;
 import com.grid.mxc.common.SideTypeEnum;
@@ -8,8 +9,6 @@ import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
-
-import cn.hutool.core.text.CharSequenceUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -118,7 +117,7 @@ public class Main {
 					buyRatio = curBuyRatio.subtract(curBuyRatio.multiply(gridRate));
 					log.info("	new sellRatio:{} ,new buyRatio:{}", sellRatio, buyRatio);
 				}
-				TimeUnit.SECONDS.sleep(10);
+				TimeUnit.SECONDS.sleep(30);
 			} catch (Exception ex) {
 				log.error(ex.getMessage(), ex);
 				// TODO: 2023/8/6  区分故障和偶发性异常
@@ -202,7 +201,8 @@ public class Main {
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellBQty.compareTo(bidQty) > 0 ? bidQty : sellBQty;
 			OrderParam param =
-					OrderParam.builder().symbol(symbolA).side(SideTypeEnum.SELL).type("IMMEDIATE_OR_CANCEL").quantity(exeQty.toString()).price(bidPrice.toString()).build();
+					OrderParam.builder().symbol(symbolB).side(SideTypeEnum.SELL).type("IMMEDIATE_OR_CANCEL").quantity(exeQty.toString()).price(bidPrice.toString()).build();
+			log.info("param:{}", JSON.toJSONString(param));
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolB, orderId);
 			// 累计总盈利
@@ -244,12 +244,7 @@ public class Main {
 
 
 	public static void main(String[] args) throws Exception {
-		log.info("a");
-		log.warn("a");
-		log.debug("a");
-		log.error("a");
 		init();
-
-		// loop();
+		loop();
 	}
 }
