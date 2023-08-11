@@ -1,7 +1,6 @@
 package com.grid.mxc;
 
 
-import com.alibaba.fastjson2.JSON;
 import com.grid.mxc.common.MxcClient;
 import com.grid.mxc.common.OrderTypeEnum;
 import com.grid.mxc.common.SideTypeEnum;
@@ -163,6 +162,11 @@ public class Main {
 					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
 					sellACumQuoteQty, sellAQty);
 		}
+		if (BigDecimal.ZERO.equals(sellACumQuoteQty)) {
+			// 小于10U、无法进入订单
+			log.warn("	卖A总结: 预设订单金额小于10U、无法进入订单");
+			return;
+		}
 		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 1, 1);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellAPrice.toPlainString(),
 				swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
@@ -192,6 +196,10 @@ public class Main {
 			log.info("	本次B买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(),
 					order.getExecutedQty(), order.getPrice(), buyBOrigQuoteQty);
 		}
+		if (BigDecimal.ZERO.equals(buyBCumQty)) {
+			log.warn("	买B总结: 本次卖A总金额小于10U、无法继续买B");
+			return;
+		}
 		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
 				(sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1), buyBCumQty
 				, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
@@ -210,10 +218,8 @@ public class Main {
 			BigDecimal exeQty = sellBQty.compareTo(bidQty) > 0 ? bidQty : sellBQty;
 			OrderParam param = OrderParam.builder().symbol(symbolB).side(SideTypeEnum.SELL).type(
 					"IMMEDIATE_OR_CANCEL").quantity(exeQty.toString()).price(bidPrice.toString()).build();
-			log.info("param:{}", JSON.toJSONString(param));
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolB, orderId);
-			log.info("order:" + JSON.toJSONString(order));
 			// 累计总盈利
 			sellBCumQuoteQty =
 					sellBCumQuoteQty.add(new BigDecimal(order.getCummulativeQuoteQty()));
@@ -225,8 +231,12 @@ public class Main {
 					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
 					sellBCumQuoteQty, sellBQty);
 		}
-
-		BigDecimal sellBPrice = sellBCumQuoteQty.divide(swapQtyOfA.subtract(sellBQty), 1, 1);
+		if (BigDecimal.ZERO.equals(sellBCumQuoteQty)) {
+			// 小于10U、无法进入订单
+			log.warn("	卖B总结: 预设订单金额小于10U、无法进入订单");
+			return;
+		}
+		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 1, 1);
 		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(),
 				eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
 		// 买B的资金来源于卖A的盈利/USD
@@ -243,7 +253,6 @@ public class Main {
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
 			OrderParam param = OrderParam.builder().symbol(symbolA).side(SideTypeEnum.BUY).type(
 					"IMMEDIATE_OR_CANCEL").quantity(orderQty.toString()).price(askPrice.toString()).build();
-			log.info("买A param:{}", JSON.toJSONString(param));
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolA, orderId);
 			// 订单成交金额
@@ -256,6 +265,10 @@ public class Main {
 			priceBookA = MxcClient.getPriceBook(symbolA);
 			log.info("  本次A买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(),
 					order.getExecutedQty(), order.getPrice(), buyAOrigQuoteQty);
+		}
+		if (BigDecimal.ZERO.equals(buyACumQty)) {
+			log.info("	买A总结: 本次卖B总金额小于10U、无法继续买A");
+			return;
 		}
 		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
 				(sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1), buyACumQty
