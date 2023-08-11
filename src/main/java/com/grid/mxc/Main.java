@@ -1,13 +1,14 @@
 package com.grid.mxc;
 
 
+import com.grid.mxc.api.ApiService;
+import com.grid.mxc.api.TradeStat;
 import com.grid.mxc.common.MxcClient;
 import com.grid.mxc.common.OrderTypeEnum;
 import com.grid.mxc.common.SideTypeEnum;
 import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
-
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +41,8 @@ public class Main {
 	private static BigDecimal gridRate;
 	private static BigDecimal sellRatio;
 	private static BigDecimal buyRatio;
+
+	private static TradeStat tradeStat = TradeStat.getInstance();
 
 
 	static {
@@ -167,9 +170,12 @@ public class Main {
 			log.warn("	卖A总结: 预设订单金额小于10U、无法进入订单");
 			return;
 		}
-		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 1, 1);
+		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 8, 1);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellAPrice.toPlainString(),
 				swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
+
+		tradeStat.sellA(swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
+
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyBOrigQuoteQty = sellACumQuoteQty;
 		x = 0;
@@ -203,6 +209,8 @@ public class Main {
 		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
 				(sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1), buyBCumQty
 				, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
+
+		tradeStat.buyB(buyBCumQty, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
 	}
 
 	private static void exeSellB(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
@@ -227,18 +235,25 @@ public class Main {
 			sellBQty = sellBQty.subtract(new BigDecimal(order.getExecutedQty()));
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
-			log.info("  本次B待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", eqQtyOfB,
-					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
-					sellBCumQuoteQty, sellBQty);
+			log.info("  本次B待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}",
+					eqQtyOfB,
+					order.getExecutedQty(),
+					order.getPrice(),
+					order.getCummulativeQuoteQty(),
+					sellBCumQuoteQty,
+					sellBQty);
 		}
 		if (BigDecimal.ZERO.equals(sellBCumQuoteQty)) {
 			// 小于10U、无法进入订单
 			log.warn("	卖B总结: 预设订单金额小于10U、无法进入订单");
 			return;
 		}
-		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 1, 1);
+		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 8, 1);
 		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(),
 				eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
+
+		tradeStat.sellB(eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
+
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyAOrigQuoteQty = sellBCumQuoteQty;
 		x = 0;
@@ -273,11 +288,14 @@ public class Main {
 		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
 				(sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1), buyACumQty
 				, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
+
+		tradeStat.buyA(buyACumQty, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
 	}
 
 
 	public static void main(String[] args) throws Exception {
 		init();
+		new ApiService().start();
 		loop();
 	}
 }
