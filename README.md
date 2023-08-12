@@ -1,10 +1,10 @@
-<center>
+<div style="text-align: center;">
   <h2>
     mexc-double-coin-grid
   </h2>
-</center>
+</div>
 
-一个对接mexc交易所的简易网格程序(未测试)
+一个对接mexc交易所的简易网格程序
 
 如果你已经物色好了你认为的潜力币、并计划持有到牛市、但又不想死拿、希望在熊市的漫长波动中让持有的币慢慢变多的话、那么你可能会对此项目感兴趣
 
