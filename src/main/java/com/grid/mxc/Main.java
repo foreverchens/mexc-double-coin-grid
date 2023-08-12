@@ -148,6 +148,10 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookA.getBidPrice();
 			BigDecimal bidQty = priceBookA.getBidQty();
+			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellAQty.compareTo(bidQty) > 0 ? bidQty : sellAQty;
 			OrderParam param =
@@ -185,6 +189,10 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookB.getAskPrice();
 			BigDecimal askQty = priceBookB.getAskQty();
+			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyBOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
@@ -222,6 +230,10 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookB.getBidPrice();
 			BigDecimal bidQty = priceBookB.getBidQty();
+			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellBQty.compareTo(bidQty) > 0 ? bidQty : sellBQty;
 			OrderParam param = OrderParam.builder().symbol(symbolB).side(SideTypeEnum.SELL).type(
@@ -235,13 +247,9 @@ public class Main {
 			sellBQty = sellBQty.subtract(new BigDecimal(order.getExecutedQty()));
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
-			log.info("  本次B待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}",
-					eqQtyOfB,
-					order.getExecutedQty(),
-					order.getPrice(),
-					order.getCummulativeQuoteQty(),
-					sellBCumQuoteQty,
-					sellBQty);
+			log.info("  本次B待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", eqQtyOfB,
+					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
+					sellBCumQuoteQty, sellBQty);
 		}
 		if (BigDecimal.ZERO.equals(sellBCumQuoteQty)) {
 			// 小于10U、无法进入订单
@@ -263,6 +271,10 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookA.getAskPrice();
 			BigDecimal askQty = priceBookA.getAskQty();
+			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyAOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;

@@ -6,6 +6,7 @@ import org.apache.commons.lang.StringUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,8 +33,8 @@ public class ApiService {
 	public void start() {
 		CompletableFuture.runAsync(() -> {
 			while (true) {
-				InputStream resourceAsStream =
-						MxcClient.class.getResourceAsStream("/application-grid.yaml");
+				InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application" +
+						"-grid.yaml");
 				Properties properties = new Properties();
 				try {
 					properties.load(resourceAsStream);
@@ -42,9 +43,17 @@ public class ApiService {
 				}
 				symbolA = properties.getProperty("symbolA");
 				symbolB = properties.getProperty("symbolB");
-				dbPath = properties.getProperty("dbPath");
+				dbPath = System.getProperty("user.dir") + properties.getProperty("dbPath");
 				tradeStat = TradeStat.getInstance();
 
+				try {
+					boolean newFile = new File(dbPath).createNewFile();
+					if (!newFile) {
+						throw new RuntimeException("tableFile create fail");
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
 				report();
 				log.info("~~~~~");
 				try {
@@ -63,12 +72,12 @@ public class ApiService {
 					tradeStat.getBuyTradeVolumeA(), tradeStat.getBuyAvgPriceA()), ",").concat("\n").getBytes());
 			fos.write(StringUtils.join(Arrays.asList(symbolA, "SELL", tradeStat.getSellTotalQtyA()
 					, tradeStat.getSellTradeVolumeA(), tradeStat.getSellAvgPriceA()), ",").concat(
-							"\n").getBytes());
+					"\n").getBytes());
 			fos.write(StringUtils.join(Arrays.asList(symbolB, "BUY", tradeStat.getBuyTotalQtyB(),
 					tradeStat.getBuyTradeVolumeB(), tradeStat.getBuyAvgPriceB()), ",").concat("\n").getBytes());
 			fos.write(StringUtils.join(Arrays.asList(symbolB, "SELL", tradeStat.getSellTotalQtyB()
 					, tradeStat.getSellTradeVolumeB(), tradeStat.getSellAvgPriceB()), ",").concat(
-							"\n").getBytes());
+					"\n").getBytes());
 			fos.write(tradeStat.getUsdBalance().toPlainString().getBytes());
 		} catch (Exception e) {
 			throw new RuntimeException(e);
