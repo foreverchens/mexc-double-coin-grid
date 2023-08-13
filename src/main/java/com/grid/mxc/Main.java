@@ -156,6 +156,11 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookA.getBidPrice();
 			BigDecimal bidQty = priceBookA.getBidQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellAQty.compareTo(bidQty) > 0 ? bidQty : sellAQty;
 			OrderParam param = OrderParam.builder()
@@ -183,7 +188,7 @@ public class Main {
 			log.warn("	卖A总结: 预设订单金额小于10U、无法进入订单");
 			return;
 		}
-		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 1, 1);
+		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 8, 1);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellAPrice.toPlainString(),
 				 swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
 		// 买B的资金来源于卖A的盈利/USD
@@ -195,6 +200,11 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookB.getAskPrice();
 			BigDecimal askQty = priceBookB.getAskQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyBOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
@@ -236,6 +246,11 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookB.getBidPrice();
 			BigDecimal bidQty = priceBookB.getBidQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellBQty.compareTo(bidQty) > 0 ? bidQty : sellBQty;
 			OrderParam param = OrderParam.builder()
@@ -263,7 +278,7 @@ public class Main {
 			log.warn("	卖B总结: 预设订单金额小于10U、无法进入订单");
 			return;
 		}
-		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 1, 1);
+		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 8, 1);
 		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(),
 				 eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
 		// 买B的资金来源于卖A的盈利/USD
@@ -275,6 +290,11 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookA.getAskPrice();
 			BigDecimal askQty = priceBookA.getAskQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
+				continue;
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyAOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
