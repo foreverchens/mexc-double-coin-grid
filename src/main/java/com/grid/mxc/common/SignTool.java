@@ -14,7 +14,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
+ *
  * @author yyy
+ * @tg t.me/ychen5325
  */
 public class SignTool {
 
@@ -22,7 +24,8 @@ public class SignTool {
 		Mac hmacSha256 = null;
 		try {
 			hmacSha256 = Mac.getInstance("HmacSHA256");
-			SecretKeySpec secKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+			SecretKeySpec secKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8),
+													 "HmacSHA256");
 			hmacSha256.init(secKey);
 		} catch (NoSuchAlgorithmException e) {
 			throw new RuntimeException("No such algorithm: " + e.getMessage());
@@ -49,13 +52,17 @@ public class SignTool {
 
 	private static String urlEncode(String str) {
 		try {
-			return URLEncoder.encode(str, "UTF-8").replaceAll("\\+", "%20");
+			return URLEncoder.encode(str, "UTF-8")
+							 .replaceAll("\\+", "%20");
 		} catch (UnsupportedEncodingException e) {
 			throw new IllegalArgumentException("UTF-8 encoding not supported!");
 		}
 	}
 
 	public static String toQueryStr(Map<String, String> params) {
-		return params.entrySet().stream().map((entry) -> entry.getKey() + "=" + urlEncode(entry.getValue())).collect(Collectors.joining("&"));
+		return params.entrySet()
+					 .stream()
+					 .map((entry) -> entry.getKey() + "=" + urlEncode(entry.getValue()))
+					 .collect(Collectors.joining("&"));
 	}
 }
