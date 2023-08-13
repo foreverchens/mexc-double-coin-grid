@@ -9,6 +9,8 @@ import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
 
+import org.apache.commons.lang.StringUtils;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -20,7 +22,9 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 /**
+ *
  * @author yyy
+ * @tg t.me/ychen5325
  */
 @Slf4j
 public class Main {
@@ -44,7 +48,7 @@ public class Main {
 
 	static {
 		InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid" +
-				".yaml");
+																				   ".yaml");
 		Properties properties = new Properties();
 		try {
 			properties.load(resourceAsStream);
@@ -56,14 +60,15 @@ public class Main {
 		swapQtyOfA = new BigDecimal(properties.getProperty("swapQtyOfA"));
 		gridRate =
 				new BigDecimal(properties.getProperty("gridRate")).multiply(new BigDecimal("0" +
-						".01"));
+																								   ".01"));
 		tradeDepth = Integer.parseInt(properties.getProperty("tradeDepth", "1"));
 	}
 
 	public static void init() throws Exception {
 		List<String> supSymbols = MxcClient.getSupSymbols();
 		if (!supSymbols.contains(symbolA) || !supSymbols.contains(symbolB)) {
-			throw new RuntimeException("该交易对不支持api交易,code=10007,自检地址\\https://www.mexc" + ".com" + "/zh" + "-CN/user/openapi");
+			String msg = "该交易对不支持api交易,code=10007,自检地址\\https://www.mexc.com/zh-CN/user/openapi";
+			throw new RuntimeException(msg);
 		}
 
 		// 合理价格及相关汇率
@@ -72,7 +77,8 @@ public class Main {
 		BigDecimal ratio = priceA.divide(priceB, 8, RoundingMode.DOWN);
 		sellRatio = ratio.add(ratio.multiply(gridRate));
 		buyRatio = ratio.subtract(ratio.multiply(gridRate));
-		eqQtyOfB = priceA.multiply(swapQtyOfA).divide(priceB, 8, RoundingMode.DOWN);
+		eqQtyOfB = priceA.multiply(swapQtyOfA)
+						 .divide(priceB, 8, RoundingMode.DOWN);
 		log.info("参数列表:");
 		log.info("{}-{},{}-{}", symbolA, priceA, symbolB, priceB);
 		log.info("{}/{}现汇率:{},下一卖出汇率:{}，下一买入汇率:{}", symbolA, symbolB, ratio, sellRatio, buyRatio);
@@ -91,12 +97,12 @@ public class Main {
 				PriceBook priceBookB = MxcClient.getPriceBook(symbolB);
 				// 检查是否满足汇率卖出条件、你可能需要卖出A、然后买入B、
 				// 所以你的汇率应该用A的最优买单价格和B的最优卖单价格计算。
-				BigDecimal curSellRatio = priceBookA.getBidPrice().divide(priceBookB.getAskPrice()
-						, 8, RoundingMode.DOWN);
+				BigDecimal curSellRatio = priceBookA.getBidPrice()
+													.divide(priceBookB.getAskPrice(), 8,
+															RoundingMode.DOWN);
 				log.info("  [{} < {} < {}]", buyRatio, curSellRatio, sellRatio);
 				if (curSellRatio.compareTo(sellRatio) > 0) {
 					log.info("	当前汇率高于卖出汇率、卖A买B");
-
 					// 卖A买B、
 					exeSellA(priceBookA, priceBookB);
 					// 更新买/卖汇率
@@ -108,8 +114,9 @@ public class Main {
 
 				// 检查是否满足汇率买入条件、你可能需要卖出B、然后买入A、
 				// 所以你的汇率应该用B的最优买单价格和A的最优卖单价格计算。
-				BigDecimal curBuyRatio = priceBookA.getAskPrice().divide(priceBookB.getBidPrice(),
-						8, RoundingMode.DOWN);
+				BigDecimal curBuyRatio = priceBookA.getAskPrice()
+												   .divide(priceBookB.getBidPrice(), 8,
+														   RoundingMode.DOWN);
 				log.info("	[{} < {} < {}]", buyRatio, curBuyRatio, sellRatio);
 				if (curBuyRatio.compareTo(buyRatio) < 0) {
 					log.info("	当前汇率低于买入汇率、卖B买A");
@@ -123,7 +130,10 @@ public class Main {
 				TimeUnit.SECONDS.sleep(30);
 			} catch (Exception ex) {
 				log.error(ex.getMessage(), ex);
-				// TODO: 2023/8/6  区分故障和偶发性异常
+				if (StringUtils.containsIgnoreCase(ex.getMessage(), "time")) {
+					// timeout
+					continue;
+				}
 				throw new RuntimeException(ex);
 			}
 		}
@@ -141,14 +151,20 @@ public class Main {
 		BigDecimal sellAQty = swapQtyOfA;
 		// 卖A获取的总盈利/USD
 		BigDecimal sellACumQuoteQty = BigDecimal.ZERO;
-		while (x++ < tradeDepth && sellAQty.multiply(priceBookA.getBidPrice()).compareTo(BigDecimal.TEN) > 0) {
+		while (x++ < tradeDepth && sellAQty.multiply(priceBookA.getBidPrice())
+										   .compareTo(BigDecimal.TEN) > 0) {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookA.getBidPrice();
 			BigDecimal bidQty = priceBookA.getBidQty();
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellAQty.compareTo(bidQty) > 0 ? bidQty : sellAQty;
-			OrderParam param =
-					OrderParam.builder().symbol(symbolA).side(SideTypeEnum.SELL).type(OrderTypeEnum.IMMEDIATE_OR_CANCEL).quantity(exeQty.toString()).price(bidPrice.toString()).build();
+			OrderParam param = OrderParam.builder()
+										 .symbol(symbolA)
+										 .side(SideTypeEnum.SELL)
+										 .type(OrderTypeEnum.IMMEDIATE_OR_CANCEL)
+										 .quantity(exeQty.toString())
+										 .price(bidPrice.toString())
+										 .build();
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolA, orderId);
 			// 累计总盈利
@@ -159,8 +175,8 @@ public class Main {
 			// 更新最优挂单
 			priceBookA = MxcClient.getPriceBook(symbolA);
 			log.info("	本次A待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", swapQtyOfA,
-					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
-					sellACumQuoteQty, sellAQty);
+					 order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
+					 sellACumQuoteQty, sellAQty);
 		}
 		if (BigDecimal.ZERO.equals(sellACumQuoteQty)) {
 			// 小于10U、无法进入订单
@@ -169,7 +185,7 @@ public class Main {
 		}
 		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 1, 1);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellAPrice.toPlainString(),
-				swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
+				 swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyBOrigQuoteQty = sellACumQuoteQty;
 		x = 0;
@@ -182,8 +198,13 @@ public class Main {
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyBOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
-			OrderParam param =
-					OrderParam.builder().symbol(symbolB).side(SideTypeEnum.BUY).type(OrderTypeEnum.IMMEDIATE_OR_CANCEL).quantity(orderQty.toString()).price(askPrice.toString()).build();
+			OrderParam param = OrderParam.builder()
+										 .symbol(symbolB)
+										 .side(SideTypeEnum.BUY)
+										 .type(OrderTypeEnum.IMMEDIATE_OR_CANCEL)
+										 .quantity(orderQty.toString())
+										 .price(askPrice.toString())
+										 .build();
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolB, orderId);
 			// 订单成交金额
@@ -194,15 +215,15 @@ public class Main {
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
 			log.info("	本次B买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(),
-					order.getExecutedQty(), order.getPrice(), buyBOrigQuoteQty);
+					 order.getExecutedQty(), order.getPrice(), buyBOrigQuoteQty);
 		}
 		if (BigDecimal.ZERO.equals(buyBCumQty)) {
 			log.warn("	买B总结: 本次卖A总金额小于10U、无法继续买B");
 			return;
 		}
 		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
-				(sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1), buyBCumQty
-				, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
+				 (sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1),
+				 buyBCumQty, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
 	}
 
 	private static void exeSellB(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
@@ -210,14 +231,20 @@ public class Main {
 		BigDecimal sellBQty = eqQtyOfB;
 		// 卖B获取的总盈利/USD
 		BigDecimal sellBCumQuoteQty = BigDecimal.ZERO;
-		while (x++ < tradeDepth && sellBQty.multiply(priceBookB.getBidPrice()).compareTo(BigDecimal.TEN) > 0) {
+		while (x++ < tradeDepth && sellBQty.multiply(priceBookB.getBidPrice())
+										   .compareTo(BigDecimal.TEN) > 0) {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookB.getBidPrice();
 			BigDecimal bidQty = priceBookB.getBidQty();
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellBQty.compareTo(bidQty) > 0 ? bidQty : sellBQty;
-			OrderParam param = OrderParam.builder().symbol(symbolB).side(SideTypeEnum.SELL).type(
-					"IMMEDIATE_OR_CANCEL").quantity(exeQty.toString()).price(bidPrice.toString()).build();
+			OrderParam param = OrderParam.builder()
+										 .symbol(symbolB)
+										 .side(SideTypeEnum.SELL)
+										 .type("IMMEDIATE_OR_CANCEL")
+										 .quantity(exeQty.toString())
+										 .price(bidPrice.toString())
+										 .build();
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolB, orderId);
 			// 累计总盈利
@@ -228,8 +255,8 @@ public class Main {
 			// 更新最优挂单
 			priceBookB = MxcClient.getPriceBook(symbolB);
 			log.info("  本次B待卖数量:{},卖出数量:{},卖出价格:{},卖出金额:{},卖出总盈利:{},剩余待卖:{}", eqQtyOfB,
-					order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
-					sellBCumQuoteQty, sellBQty);
+					 order.getExecutedQty(), order.getPrice(), order.getCummulativeQuoteQty(),
+					 sellBCumQuoteQty, sellBQty);
 		}
 		if (BigDecimal.ZERO.equals(sellBCumQuoteQty)) {
 			// 小于10U、无法进入订单
@@ -238,7 +265,7 @@ public class Main {
 		}
 		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 1, 1);
 		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(),
-				eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
+				 eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyAOrigQuoteQty = sellBCumQuoteQty;
 		x = 0;
@@ -251,8 +278,13 @@ public class Main {
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyAOrigQuoteQty.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
-			OrderParam param = OrderParam.builder().symbol(symbolA).side(SideTypeEnum.BUY).type(
-					"IMMEDIATE_OR_CANCEL").quantity(orderQty.toString()).price(askPrice.toString()).build();
+			OrderParam param = OrderParam.builder()
+										 .symbol(symbolA)
+										 .side(SideTypeEnum.BUY)
+										 .type("IMMEDIATE_OR_CANCEL")
+										 .quantity(orderQty.toString())
+										 .price(askPrice.toString())
+										 .build();
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolA, orderId);
 			// 订单成交金额
@@ -264,15 +296,15 @@ public class Main {
 			// 更新最优挂单
 			priceBookA = MxcClient.getPriceBook(symbolA);
 			log.info("  本次A买入花费:{},买入数量:{},买入价格:{},剩余可用余额:{}", order.getCummulativeQuoteQty(),
-					order.getExecutedQty(), order.getPrice(), buyAOrigQuoteQty);
+					 order.getExecutedQty(), order.getPrice(), buyAOrigQuoteQty);
 		}
 		if (BigDecimal.ZERO.equals(buyACumQty)) {
 			log.info("	买A总结: 本次卖B总金额小于10U、无法继续买A");
 			return;
 		}
 		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
-				(sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1), buyACumQty
-				, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
+				 (sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1),
+				 buyACumQty, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
 	}
 
 

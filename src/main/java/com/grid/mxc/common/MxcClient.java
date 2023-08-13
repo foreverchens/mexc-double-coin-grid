@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  * 抹茶 V3 APi的部分实现
  *
  * @author yyy
+ * @tg t.me/ychen5325
  */
 @Slf4j
 public class MxcClient {
@@ -40,7 +41,8 @@ public class MxcClient {
 	private static final OkHttpClient HTTP_CLIENT;
 
 	static {
-		InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid.yaml");
+		InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid" +
+																				   ".yaml");
 		Properties properties = new Properties();
 		try {
 			properties.load(resourceAsStream);
@@ -57,37 +59,52 @@ public class MxcClient {
 
 
 	public static String getServerTime() throws Exception {
-		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/time").build();
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/time")
+											   .build();
+		try (Response response = HTTP_CLIENT.newCall(request)
+											.execute()) {
 			assert response.body() != null;
-			return JSON.parseObject(response.body().string()).getString("serverTime");
+			return JSON.parseObject(response.body()
+											.string())
+					   .getString("serverTime");
 		}
 	}
 
 	public static List<String> getSupSymbols() throws Exception {
-		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/defaultSymbols").build();
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/defaultSymbols")
+											   .build();
+		try (Response response = HTTP_CLIENT.newCall(request)
+											.execute()) {
 			assert response.body() != null;
-			return JSON.parseObject(response.body().string()).getObject("data", new TypeReference<List<String>>() {});
+			return JSON.parseObject(response.body()
+											.string())
+					   .getObject("data", new TypeReference<List<String>>() {});
 		}
 	}
 
 
 	public static BigDecimal getPrice(String symbol) throws Exception {
-		Request request =
-				new Request.Builder().url("https://api.mexc.com/api/v3/ticker/price?symbol=" + symbol).build();
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/ticker/price" +
+															"?symbol=" + symbol)
+											   .build();
+		try (Response response = HTTP_CLIENT.newCall(request)
+											.execute()) {
 			assert response.body() != null;
-			return JSON.parseObject(response.body().string()).getBigDecimal("price");
+			return JSON.parseObject(response.body()
+											.string())
+					   .getBigDecimal("price");
 		}
 	}
 
 	public static PriceBook getPriceBook(String symbol) throws IOException {
-		Request request =
-				new Request.Builder().url("https://api.mexc.com/api/v3/ticker/bookTicker?symbol=" + symbol).build();
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+		Request request = new Request.Builder().url("https://api.mexc.com/api/v3/ticker/bookTicker"
+															+ "?symbol=" + symbol)
+											   .build();
+		try (Response response = HTTP_CLIENT.newCall(request)
+											.execute()) {
 			assert response.body() != null;
-			return JSON.parseObject(response.body().string(), PriceBook.class);
+			return JSON.parseObject(response.body()
+											.string(), PriceBook.class);
 		}
 	}
 
@@ -115,14 +132,22 @@ public class MxcClient {
 		params.put("signature", signature);
 
 		Request request =
-				new Request.Builder().url("https://api.mexc.com/api/v3/order?" + SignTool.toQueryStr(params)).header(HEADER_API_KEY, AK).post(RequestBody.create("", MediaType.parse("application/json"))).build();
+				new Request.Builder().url("https://api.mexc.com/api/v3/order?" + SignTool.toQueryStr(params))
+											   .header(HEADER_API_KEY, AK)
+											   .post(RequestBody.create("", MediaType.parse(
+													   "application/json")))
+											   .build();
 
-		try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+		try (Response response = HTTP_CLIENT.newCall(request)
+											.execute()) {
 			assert response.body() != null;
 			if (response.code() != 200) {
-				throw new RuntimeException(response.body().string());
+				throw new RuntimeException(response.body()
+												   .string());
 			}
-			return JSON.parseObject(response.body().string()).getString("orderId");
+			return JSON.parseObject(response.body()
+											.string())
+					   .getString("orderId");
 		}
 	}
 
@@ -136,14 +161,19 @@ public class MxcClient {
 		params.put("signature", signature);
 
 		Request request =
-				new Request.Builder().url("https://api.mexc.com/api/v3/order?" + SignTool.toQueryStr(params)).header(HEADER_API_KEY, AK).get().build();
+				new Request.Builder().url("https://api.mexc.com/api/v3/order?" + SignTool.toQueryStr(params))
+											   .header(HEADER_API_KEY, AK)
+											   .get()
+											   .build();
 		int x = 3;
 		// 订单创建成功到订单可查到、存在时间间隔、查失败时重试
 		do {
-			try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+			try (Response response = HTTP_CLIENT.newCall(request)
+												.execute()) {
 				assert response.body() != null;
 				if (response.code() == 200) {
-					return JSON.parseObject(response.body().string(), Order.class);
+					return JSON.parseObject(response.body()
+													.string(), Order.class);
 				}
 			}
 			TimeUnit.SECONDS.sleep(1);
