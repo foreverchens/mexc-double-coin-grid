@@ -160,8 +160,9 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookA.getBidPrice();
 			BigDecimal bidQty = priceBookA.getBidQty();
-			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (bidPrice.multiply(bidQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
 				continue;
 			}
 			// 最优买价的可卖数量
@@ -193,7 +194,7 @@ public class Main {
 		}
 		BigDecimal sellAPrice = sellACumQuoteQty.divide(swapQtyOfA.subtract(sellAQty), 8, 1);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellAPrice.toPlainString(),
-				swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
+				 swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
 
 		tradeStat.sellA(swapQtyOfA.subtract(sellAQty), sellACumQuoteQty);
 
@@ -206,8 +207,9 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookB.getAskPrice();
 			BigDecimal askQty = priceBookB.getAskQty();
-			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (askPrice.multiply(askQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
 				continue;
 			}
 			// 最优卖价的最大可买数量
@@ -237,8 +239,8 @@ public class Main {
 			return;
 		}
 		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
-				(sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1), buyBCumQty
-				, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
+				 (sellACumQuoteQty.subtract(buyBOrigQuoteQty)).divide(buyBCumQty, 8, 1),
+				 buyBCumQty, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
 
 		tradeStat.buyB(buyBCumQty, sellACumQuoteQty.subtract(buyBOrigQuoteQty), buyBOrigQuoteQty);
 	}
@@ -253,8 +255,9 @@ public class Main {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookB.getBidPrice();
 			BigDecimal bidQty = priceBookB.getBidQty();
-			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (bidPrice.multiply(bidQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
 				continue;
 			}
 			// 最优买价的可卖数量
@@ -286,7 +289,7 @@ public class Main {
 		}
 		BigDecimal sellBPrice = sellBCumQuoteQty.divide(eqQtyOfB.subtract(sellBQty), 8, 1);
 		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(),
-				eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
+				 eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
 
 		tradeStat.sellB(eqQtyOfB.subtract(sellBQty), sellBCumQuoteQty);
 
@@ -299,8 +302,9 @@ public class Main {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookA.getAskPrice();
 			BigDecimal askQty = priceBookA.getAskQty();
-			//检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (askPrice.multiply(askQty).compareTo(BigDecimal.valueOf(5)) < 0) {
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty)
+						.compareTo(BigDecimal.valueOf(5)) < 0) {
 				continue;
 			}
 			// 最优卖价的最大可买数量
@@ -331,8 +335,8 @@ public class Main {
 			return;
 		}
 		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}",
-				(sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1), buyACumQty
-				, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
+				 (sellBCumQuoteQty.subtract(buyAOrigQuoteQty)).divide(buyACumQty, 8, 1),
+				 buyACumQty, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
 
 		tradeStat.buyA(buyACumQty, sellBCumQuoteQty.subtract(buyAOrigQuoteQty), buyAOrigQuoteQty);
 	}
