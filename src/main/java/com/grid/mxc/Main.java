@@ -10,7 +10,6 @@ import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
-
 import org.apache.commons.lang.StringUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.SocketException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 public class Main {
 
 	private static int tradeDepth;
-
 	private static String symbolA;
 	private static String symbolB;
 	/**
@@ -134,8 +133,12 @@ public class Main {
 				TimeUnit.SECONDS.sleep(30);
 			} catch (Exception ex) {
 				log.error(ex.getMessage(), ex);
-				if (StringUtils.containsIgnoreCase(ex.getMessage(), "time")) {
-					// timeout
+				if (StringUtils.containsIgnoreCase(ex.getMessage(), "time") || ex instanceof SocketException) {
+					try {
+						TimeUnit.MINUTES.sleep(3);
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
 					continue;
 				}
 				throw new RuntimeException(ex);
