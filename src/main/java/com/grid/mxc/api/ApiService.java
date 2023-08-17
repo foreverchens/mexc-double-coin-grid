@@ -33,9 +33,7 @@ public class ApiService {
 
 	public void start() {
 		CompletableFuture.runAsync(() -> {
-			InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application" +
-																					   "-grid" +
-																					   ".yaml");
+			InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid.yaml");
 			Properties properties = new Properties();
 			try {
 				properties.load(resourceAsStream);
@@ -71,32 +69,11 @@ public class ApiService {
 	public void report() {
 		try (FileOutputStream fos = new FileOutputStream(dbPath)) {
 			fos.write("symbol,side,totalQty,tradeVolume,avgPrice\n".getBytes());
-			fos.write(StringUtils.join(Arrays.asList(symbolA, "BUY", tradeStat.getBuyTotalQtyA(),
-													 tradeStat.getBuyTradeVolumeA(),
-													 tradeStat.getBuyAvgPriceA()), ",")
-								 .concat("\n")
-								 .getBytes());
-			fos.write(StringUtils.join(Arrays.asList(symbolA, "SELL", tradeStat.getSellTotalQtyA()
-										 , tradeStat.getSellTradeVolumeA(),
-													 tradeStat.getSellAvgPriceA()), ",")
-								 .concat("\n")
-								 .getBytes());
-			fos.write(StringUtils.join(Arrays.asList(symbolB, "BUY", tradeStat.getBuyTotalQtyB(),
-													 tradeStat.getBuyTradeVolumeB(),
-													 tradeStat.getBuyAvgPriceB()), ",")
-								 .concat("\n")
-								 .getBytes());
-			fos.write(StringUtils.join(Arrays.asList(symbolB, "SELL", tradeStat.getSellTotalQtyB()
-										 , tradeStat.getSellTradeVolumeB(),
-													 tradeStat.getSellAvgPriceB()), ",")
-								 .concat("\n")
-								 .getBytes());
-			fos.write(tradeStat.getUsdBalance()
-							   .toPlainString()
-							   .concat("  |  ")
-							   .concat(DateTime.now()
-											   .toString())
-							   .getBytes());
+			fos.write(StringUtils.join(Arrays.asList(symbolA, "BUY", tradeStat.getBuyTotalQtyA(), tradeStat.getBuyTradeVolumeA(), tradeStat.getBuyAvgPriceA()), ",").concat("\n").getBytes());
+			fos.write(StringUtils.join(Arrays.asList(symbolA, "SELL", tradeStat.getSellTotalQtyA(), tradeStat.getSellTradeVolumeA(), tradeStat.getSellAvgPriceA()), ",").concat("\n").getBytes());
+			fos.write(StringUtils.join(Arrays.asList(symbolB, "BUY", tradeStat.getBuyTotalQtyB(), tradeStat.getBuyTradeVolumeB(), tradeStat.getBuyAvgPriceB()), ",").concat("\n").getBytes());
+			fos.write(StringUtils.join(Arrays.asList(symbolB, "SELL", tradeStat.getSellTotalQtyB(), tradeStat.getSellTradeVolumeB(), tradeStat.getSellAvgPriceB()), ",").concat("\n").getBytes());
+			fos.write(tradeStat.getUsdBalance().toPlainString().concat("  |  ").concat(DateTime.now().toString()).getBytes());
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
