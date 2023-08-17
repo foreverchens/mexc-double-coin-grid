@@ -31,9 +31,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class Main {
 
-	private static int tradeDepth;
 	private static String symbolA;
 	private static String symbolB;
+	private static Double slippage;
 	/**
 	 * 卖A买B时、A的卖出量
 	 */
@@ -60,7 +60,7 @@ public class Main {
 		symbolB = properties.getProperty("symbolB");
 		swapQtyOfA = new BigDecimal(properties.getProperty("swapQtyOfA"));
 		gridRate = new BigDecimal(properties.getProperty("gridRate")).multiply(new BigDecimal("0.01"));
-		tradeDepth = Integer.parseInt(properties.getProperty("tradeDepth", "1"));
+		slippage = Double.valueOf(properties.getProperty("slippage"));
 	}
 
 	public static void init() throws Exception {
@@ -143,21 +143,23 @@ public class Main {
 	 * 卖B买A则相反
 	 */
 	private static void exeSellA(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
-		int x = 0;
 		BigDecimal sellQtyA = swapQtyOfA;
 		// 卖A获取的总盈利/USD
 		BigDecimal sellCumQuoteQtyA = BigDecimal.ZERO;
-		while (x++ < tradeDepth && sellQtyA.multiply(priceBookA.getBidPrice()).compareTo(lowQuoteQty) > 0) {
+		// 卖A、以当前最优买价计算最低可接受买价
+		BigDecimal lowBuyPriceA = priceBookA.getBidPrice().multiply(BigDecimal.valueOf(1 - slippage));
+
+		while (priceBookA.getBidPrice().compareTo(lowBuyPriceA) > 0 && sellQtyA.multiply(priceBookA.getBidPrice()).compareTo(lowQuoteQty) > 0) {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookA.getBidPrice();
 			BigDecimal bidQty = priceBookA.getBidQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty).compareTo(lowQuoteQty) < 0) {
+				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
+				bidQty = lowQuoteQty.divide(bidPrice, 8, RoundingMode.UP);
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellQtyA.compareTo(bidQty) > 0 ? bidQty : sellQtyA;
-			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (bidPrice.multiply(exeQty).compareTo(lowQuoteQty) < 0) {
-				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
-				exeQty = lowQuoteQty.divide(bidPrice, 8, RoundingMode.UP);
-			}
 			OrderParam param = OrderParam.builder().symbol(symbolA).side(SideTypeEnum.SELL).type(OrderTypeEnum.IMMEDIATE_OR_CANCEL).quantity(exeQty.toString()).price(bidPrice.toString()).build();
 			Order order = MxcClient.getOrder(symbolA, MxcClient.createOrder(param));
 			// 累计总盈利
@@ -173,7 +175,7 @@ public class Main {
 			log.warn("	卖A总结: 预设订单金额小于5U、无法进入订单");
 			return;
 		}
-		BigDecimal sellPriceA = sellCumQuoteQtyA.divide(swapQtyOfA.subtract(sellQtyA), 8, 1);
+		BigDecimal sellPriceA = sellCumQuoteQtyA.divide(swapQtyOfA.subtract(sellQtyA), 8, RoundingMode.DOWN);
 		log.warn("	卖A总结: 以{}的均价卖出{}个、总金额为:{}", sellPriceA.toPlainString(), swapQtyOfA.subtract(sellQtyA), sellCumQuoteQtyA);
 
 		// 统计
@@ -181,24 +183,24 @@ public class Main {
 
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyOrigQuoteQtyB = sellCumQuoteQtyA;
-		x = 0;
 		// B的累计买入量
 		BigDecimal buyCumQtyB = BigDecimal.ZERO;
-		while (x++ < tradeDepth && buyOrigQuoteQtyB.compareTo(lowQuoteQty) > 0) {
+		// 买B、以当前最优卖价计算最高可接受卖价
+		BigDecimal highSellPriceB = priceBookB.getAskPrice().multiply(BigDecimal.valueOf(1 + slippage));
+		while (priceBookB.getAskPrice().compareTo(highSellPriceB) < 0 && buyOrigQuoteQtyB.compareTo(lowQuoteQty) > 0) {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookB.getAskPrice();
 			BigDecimal askQty = priceBookB.getAskQty();
+
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty).compareTo(lowQuoteQty) < 0) {
+				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
+				askQty = lowQuoteQty.divide(askPrice, 8, RoundingMode.UP);
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyOrigQuoteQtyB.divide(askPrice, 8, RoundingMode.DOWN);
 			// 预进入订单数量
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
-
-			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (askPrice.multiply(orderQty).compareTo(lowQuoteQty) < 0) {
-				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
-				orderQty = lowQuoteQty.divide(askPrice, 8, RoundingMode.UP);
-			}
-
 			OrderParam param = OrderParam.builder().symbol(symbolB).side(SideTypeEnum.BUY).type(OrderTypeEnum.IMMEDIATE_OR_CANCEL).quantity(orderQty.toString()).price(askPrice.toString()).build();
 			Order order = MxcClient.getOrder(symbolB, MxcClient.createOrder(param));
 			// 订单成交金额
@@ -215,28 +217,30 @@ public class Main {
 			tradeStat.buyB(BigDecimal.ZERO, BigDecimal.ZERO, buyOrigQuoteQtyB);
 			return;
 		}
-		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB)).divide(buyCumQtyB, 8, 1), buyCumQtyB, sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB),
+		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB)).divide(buyCumQtyB, 8, RoundingMode.DOWN), buyCumQtyB, sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB),
 				 buyOrigQuoteQtyB);
 
 		tradeStat.buyB(buyCumQtyB, sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB), buyOrigQuoteQtyB);
 	}
 
 	private static void exeSellB(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
-		int x = 0;
 		BigDecimal sellQtyB = eqQtyOfB;
 		// 卖B获取的总盈利/USD
 		BigDecimal sellCumQuoteQtyB = BigDecimal.ZERO;
-		while (x++ < tradeDepth && sellQtyB.multiply(priceBookB.getBidPrice()).compareTo(lowQuoteQty) > 0) {
+		// 卖B、以当前最优买价计算最低可接受买价
+		BigDecimal lowBuyPriceB = priceBookB.getBidPrice().multiply(BigDecimal.valueOf(1 - slippage));
+		while (priceBookB.getBidPrice().compareTo(lowBuyPriceB) > 0 && sellQtyB.multiply(priceBookB.getBidPrice()).compareTo(lowQuoteQty) > 0) {
 			// 获取最优一格挂单
 			BigDecimal bidPrice = priceBookB.getBidPrice();
 			BigDecimal bidQty = priceBookB.getBidQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (bidPrice.multiply(bidQty).compareTo(lowQuoteQty) < 0) {
+				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
+				bidQty = lowQuoteQty.divide(bidPrice, 8, RoundingMode.UP);
+			}
 			// 最优买价的可卖数量
 			BigDecimal exeQty = sellQtyB.compareTo(bidQty) > 0 ? bidQty : sellQtyB;
-			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (bidPrice.multiply(exeQty).compareTo(lowQuoteQty) < 0) {
-				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
-				exeQty = lowQuoteQty.divide(bidPrice, 8, RoundingMode.UP);
-			}
+
 			OrderParam param = OrderParam.builder().symbol(symbolB).side(SideTypeEnum.SELL).type("IMMEDIATE_OR_CANCEL").quantity(exeQty.toString()).price(bidPrice.toString()).build();
 			String orderId = MxcClient.createOrder(param);
 			Order order = MxcClient.getOrder(symbolB, orderId);
@@ -253,28 +257,30 @@ public class Main {
 			log.warn("	卖B总结: 预设订单金额小于5U、无法进入订单");
 			return;
 		}
-		BigDecimal sellBPrice = sellCumQuoteQtyB.divide(eqQtyOfB.subtract(sellQtyB), 8, 1);
-		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellBPrice.toPlainString(), eqQtyOfB.subtract(sellQtyB), sellCumQuoteQtyB);
+		BigDecimal sellPriceB = sellCumQuoteQtyB.divide(eqQtyOfB.subtract(sellQtyB), 8, RoundingMode.DOWN);
+		log.warn("	卖B总结: 以{}的均价卖出{}个、总金额为:{}", sellPriceB.toPlainString(), eqQtyOfB.subtract(sellQtyB), sellCumQuoteQtyB);
 		// 统计
 		tradeStat.sellB(eqQtyOfB.subtract(sellQtyB), sellCumQuoteQtyB);
 
 		// 买B的资金来源于卖A的盈利/USD
 		BigDecimal buyOrigQuoteQtyA = sellCumQuoteQtyB;
-		x = 0;
 		// A的累计买入量
 		BigDecimal buyCumQtyA = BigDecimal.ZERO;
-		while (x++ < tradeDepth && buyOrigQuoteQtyA.compareTo(lowQuoteQty) > 0) {
+		// 买A、以当前最优卖价计算最高可接受卖价
+		BigDecimal highSellPriceA = priceBookA.getAskPrice().multiply(BigDecimal.valueOf(1 + slippage));
+		while (priceBookA.getAskPrice().compareTo(highSellPriceA) < 0 && buyOrigQuoteQtyA.compareTo(lowQuoteQty) > 0) {
 			// 获取最优一格卖单
 			BigDecimal askPrice = priceBookA.getAskPrice();
 			BigDecimal askQty = priceBookA.getAskQty();
+			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
+			if (askPrice.multiply(askQty).compareTo(lowQuoteQty) < 0) {
+				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
+				askQty = lowQuoteQty.divide(askPrice, 8, RoundingMode.UP);
+			}
 			// 最优卖价的最大可买数量
 			BigDecimal maxExeQty = buyOrigQuoteQtyA.divide(askPrice, 8, RoundingMode.DOWN);
 			BigDecimal orderQty = maxExeQty.compareTo(askQty) > 0 ? askQty : maxExeQty;
-			// 检查这层挂单的总金额是否大于5U、抹茶的最低开单限制
-			if (askPrice.multiply(orderQty).compareTo(lowQuoteQty) < 0) {
-				// 最优流动性过低时、手工填满5U流动性、因IOC机制、只会成交实际拥有的流动性。
-				orderQty = lowQuoteQty.divide(askPrice, 8, RoundingMode.UP);
-			}
+
 			OrderParam param = OrderParam.builder().symbol(symbolA).side(SideTypeEnum.BUY).type("IMMEDIATE_OR_CANCEL").quantity(orderQty.toString()).price(askPrice.toString()).build();
 			Order order = MxcClient.getOrder(symbolA, MxcClient.createOrder(param));
 			// 订单成交金额
@@ -291,7 +297,7 @@ public class Main {
 			tradeStat.buyA(BigDecimal.ZERO, BigDecimal.ZERO, buyOrigQuoteQtyA);
 			return;
 		}
-		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA)).divide(buyCumQtyA, 8, 1), buyCumQtyA, sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA),
+		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA)).divide(buyCumQtyA, 8, RoundingMode.DOWN), buyCumQtyA, sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA),
 				 buyOrigQuoteQtyA);
 		// 统计
 		tradeStat.buyA(buyCumQtyA, sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA), buyOrigQuoteQtyA);
