@@ -45,7 +45,7 @@ public class Main {
 	private static BigDecimal gridRate;
 	private static BigDecimal sellRatio;
 	private static BigDecimal buyRatio;
-	private static BigDecimal lowQuoteQty = BigDecimal.valueOf(5);
+	private static BigDecimal lowQuoteQty = BigDecimal.valueOf(6);
 	private static TradeStat tradeStat = TradeStat.getInstance();
 
 	static {

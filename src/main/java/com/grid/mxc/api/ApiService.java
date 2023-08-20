@@ -42,7 +42,7 @@ public class ApiService {
 			}
 			symbolA = properties.getProperty("symbolA");
 			symbolB = properties.getProperty("symbolB");
-			dbPath = System.getProperty("user.dir") + properties.getProperty("dbPath");
+			dbPath = System.getProperty("user.dir") + File.separator + properties.getProperty("dbPath");
 			tradeStat = TradeStat.getInstance();
 
 			try {

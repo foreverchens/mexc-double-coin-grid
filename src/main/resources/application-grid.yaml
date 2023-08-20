@@ -5,3 +5,4 @@ symbolB: DNXUSDT
 swapQtyOfA: 1
 gridRate: 2
 slippage: 0.005
+dbPath: table.txt
