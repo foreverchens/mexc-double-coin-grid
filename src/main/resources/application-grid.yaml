@@ -2,6 +2,6 @@ ak: ''
 sk: ''
 symbolA: KASUSDT
 symbolB: DNXUSDT
-swapQtyOfA: 100
-gridRate: 0.5
-tradeDepth: 1
+swapQtyOfA: 1
+gridRate: 2
+slippage: 0.005

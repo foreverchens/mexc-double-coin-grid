@@ -139,7 +139,7 @@ public class Main {
 	 * 卖A买B
 	 * 不断的吃掉A的最优买单、直至达到最大可卖出数量
 	 * 然后用卖出A获取的盈利、不断吃B的最优卖单、
-	 * 这不是市价操作、你可以根据流动性深度来设置tradeDepth的值。
+	 * 这不是市价操作、你可以根据流动性深度来设置slippage的值。
 	 * 卖B买A则相反
 	 */
 	private static void exeSellA(PriceBook priceBookA, PriceBook priceBookB) throws Exception {
