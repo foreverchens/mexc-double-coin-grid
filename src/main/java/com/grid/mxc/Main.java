@@ -1,7 +1,7 @@
 package com.grid.mxc;
 
 
-import com.grid.mxc.api.ApiService;
+import com.grid.mxc.api.TelegramBotService;
 import com.grid.mxc.api.TradeStat;
 import com.grid.mxc.common.MxcClient;
 import com.grid.mxc.common.OrderTypeEnum;
@@ -10,18 +10,16 @@ import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
-import org.apache.commons.lang.StringUtils;
-
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.SocketException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *
@@ -47,6 +45,9 @@ public class Main {
 	private static BigDecimal buyRatio;
 	private static BigDecimal lowQuoteQty = BigDecimal.valueOf(6);
 	private static TradeStat tradeStat = TradeStat.getInstance();
+
+	public static AtomicBoolean stop = new AtomicBoolean(false);
+	private static TelegramBotService telegramBotService;
 
 	static {
 		InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid.yaml");
@@ -76,6 +77,7 @@ public class Main {
 		sellRatio = ratio.add(ratio.multiply(gridRate));
 		buyRatio = ratio.subtract(ratio.multiply(gridRate));
 		eqQtyOfB = priceA.multiply(swapQtyOfA).divide(priceB, 8, RoundingMode.DOWN);
+		telegramBotService = new TelegramBotService();
 		log.info("参数列表:");
 		log.info("{}-{},{}-{}", symbolA, priceA, symbolB, priceB);
 		log.info("{}/{}现汇率:{},下一卖出汇率:{}，下一买入汇率:{}", symbolA, symbolB, ratio, sellRatio, buyRatio);
@@ -88,6 +90,11 @@ public class Main {
 	 */
 	public static void loop() {
 		while (true) {
+
+			if (stop.get()) {
+				continue;
+			}
+
 			try {
 				PriceBook priceBookA = MxcClient.getPriceBook(symbolA);
 				PriceBook priceBookB = MxcClient.getPriceBook(symbolB);
@@ -121,8 +128,8 @@ public class Main {
 				}
 				TimeUnit.SECONDS.sleep(30);
 			} catch (Exception ex) {
-				log.error(ex.getMessage(), ex);
-				if (StringUtils.containsIgnoreCase(ex.getMessage(), "time") || ex instanceof SocketException) {
+				if (ex instanceof IOException) {
+					log.error(ex.getMessage());
 					try {
 						TimeUnit.MINUTES.sleep(3);
 					} catch (InterruptedException e) {
@@ -130,7 +137,9 @@ public class Main {
 					}
 					continue;
 				}
-				throw new RuntimeException(ex);
+				log.error(ex.getMessage(), ex);
+				stop.set(true);
+				telegramBotService.sendMessage(false, "stop error:\n" + ex.getMessage());
 			}
 		}
 	}
@@ -217,8 +226,8 @@ public class Main {
 			tradeStat.buyB(BigDecimal.ZERO, BigDecimal.ZERO, buyOrigQuoteQtyB);
 			return;
 		}
-		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB)).divide(buyCumQtyB, 8, RoundingMode.DOWN), buyCumQtyB, sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB),
-				 buyOrigQuoteQtyB);
+		log.warn("	买B总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB)).divide(buyCumQtyB, 8, RoundingMode.DOWN), buyCumQtyB,
+				 sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB), buyOrigQuoteQtyB);
 
 		tradeStat.buyB(buyCumQtyB, sellCumQuoteQtyA.subtract(buyOrigQuoteQtyB), buyOrigQuoteQtyB);
 	}
@@ -297,8 +306,8 @@ public class Main {
 			tradeStat.buyA(BigDecimal.ZERO, BigDecimal.ZERO, buyOrigQuoteQtyA);
 			return;
 		}
-		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA)).divide(buyCumQtyA, 8, RoundingMode.DOWN), buyCumQtyA, sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA),
-				 buyOrigQuoteQtyA);
+		log.warn("	买A总结: 以{}的均价买入{}个、总金额为:{},留存USD为:{}", (sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA)).divide(buyCumQtyA, 8, RoundingMode.DOWN), buyCumQtyA,
+				 sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA), buyOrigQuoteQtyA);
 		// 统计
 		tradeStat.buyA(buyCumQtyA, sellCumQuoteQtyB.subtract(buyOrigQuoteQtyA), buyOrigQuoteQtyA);
 	}
@@ -306,7 +315,6 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		init();
-		new ApiService().start();
 		loop();
 	}
 }
