@@ -10,6 +10,7 @@ import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -88,10 +89,12 @@ public class Main {
 	/**
 	 * 低市值币往往存在流动性问题、所以在实际运行中、应该根据最新买/卖单价格判断是否进行套利
 	 */
+	@SneakyThrows
 	public static void loop() {
 		while (true) {
 
 			if (stop.get()) {
+				TimeUnit.MINUTES.sleep(5);
 				continue;
 			}
 
