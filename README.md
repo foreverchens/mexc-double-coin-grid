@@ -37,7 +37,9 @@
 | swapQtyOfA |             每次买入/卖出时、币A的交换数量              |  Y   |
 |  gridRate  |                 等比网格、值范围(0,100)                 |  Y   |
 | slippage | 交易滑点 |  Y   |
-
+| enableTgBot | 是否启用tgBot、默认false | N |
+| chatId | tgBot交互的频道Id | N |
+| token | tgBot token | N |
 现存问题：
 
 1. 在低流动性场景中、 可能会出现卖A获得的USD无法全部进入买B的订单中、导致USD结余、该情况可通过提高slippage交易滑点的值来解决。

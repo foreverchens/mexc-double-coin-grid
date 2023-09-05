@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,6 +48,10 @@ public class Main {
 	private static BigDecimal lowQuoteQty = BigDecimal.valueOf(6);
 	private static TradeStat tradeStat = TradeStat.getInstance();
 
+	/**
+	 * tgBot是否启用
+	 */
+	private static boolean enableTgBot;
 	public static AtomicBoolean stop = new AtomicBoolean(false);
 	private static TelegramBotService telegramBotService;
 
@@ -63,6 +68,7 @@ public class Main {
 		swapQtyOfA = new BigDecimal(properties.getProperty("swapQtyOfA"));
 		gridRate = new BigDecimal(properties.getProperty("gridRate")).multiply(new BigDecimal("0.01"));
 		slippage = Double.valueOf(properties.getProperty("slippage"));
+		enableTgBot = Boolean.parseBoolean(properties.getProperty("enableTgBot", "false"));
 	}
 
 	public static void init() throws Exception {
@@ -78,7 +84,9 @@ public class Main {
 		sellRatio = ratio.add(ratio.multiply(gridRate));
 		buyRatio = ratio.subtract(ratio.multiply(gridRate));
 		eqQtyOfB = priceA.multiply(swapQtyOfA).divide(priceB, 8, RoundingMode.DOWN);
-		telegramBotService = new TelegramBotService();
+		if (enableTgBot) {
+			telegramBotService = new TelegramBotService();
+		}
 		log.info("参数列表:");
 		log.info("{}-{},{}-{}", symbolA, priceA, symbolB, priceB);
 		log.info("{}/{}现汇率:{},下一卖出汇率:{}，下一买入汇率:{}", symbolA, symbolB, ratio, sellRatio, buyRatio);
@@ -139,6 +147,10 @@ public class Main {
 						throw new RuntimeException(e);
 					}
 					continue;
+				}
+				if (Objects.isNull(telegramBotService)) {
+					// 没开启TgBot、直接抛出异常
+					throw ex;
 				}
 				log.error(ex.getMessage(), ex);
 				stop.set(true);
