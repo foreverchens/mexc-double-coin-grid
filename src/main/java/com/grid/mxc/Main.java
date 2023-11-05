@@ -1,14 +1,14 @@
 package com.grid.mxc;
 
 
-import com.grid.mxc.api.TelegramBotService;
-import com.grid.mxc.api.TradeStat;
 import com.grid.mxc.common.MxcClient;
 import com.grid.mxc.common.OrderTypeEnum;
 import com.grid.mxc.common.SideTypeEnum;
 import com.grid.mxc.entity.Order;
 import com.grid.mxc.entity.OrderParam;
 import com.grid.mxc.entity.PriceBook;
+
+import cn.hutool.http.HttpException;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +18,8 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *
@@ -30,30 +28,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Slf4j
 public class Main {
-
 	private static String symbolA;
 	private static String symbolB;
 	private static Double slippage;
-	/**
-	 * 卖A买B时、A的卖出量
-	 */
 	private static BigDecimal swapQtyOfA;
-	/**
-	 * 买A卖B时、B的等价卖出量、
-	 */
 	private static BigDecimal eqQtyOfB;
 	private static BigDecimal gridRate;
 	private static BigDecimal sellRatio;
 	private static BigDecimal buyRatio;
 	private static BigDecimal lowQuoteQty = BigDecimal.valueOf(6);
 	private static TradeStat tradeStat = TradeStat.getInstance();
-
-	/**
-	 * tgBot是否启用
-	 */
-	private static boolean enableTgBot;
-	public static AtomicBoolean stop = new AtomicBoolean(false);
-	private static TelegramBotService telegramBotService;
 
 	static {
 		InputStream resourceAsStream = MxcClient.class.getResourceAsStream("/application-grid.yaml");
@@ -68,7 +52,6 @@ public class Main {
 		swapQtyOfA = new BigDecimal(properties.getProperty("swapQtyOfA"));
 		gridRate = new BigDecimal(properties.getProperty("gridRate")).multiply(new BigDecimal("0.01"));
 		slippage = Double.valueOf(properties.getProperty("slippage"));
-		enableTgBot = Boolean.parseBoolean(properties.getProperty("enableTgBot", "false"));
 	}
 
 	public static void init() throws Exception {
@@ -84,9 +67,6 @@ public class Main {
 		sellRatio = ratio.add(ratio.multiply(gridRate));
 		buyRatio = ratio.subtract(ratio.multiply(gridRate));
 		eqQtyOfB = priceA.multiply(swapQtyOfA).divide(priceB, 8, RoundingMode.DOWN);
-		if (enableTgBot) {
-			telegramBotService = new TelegramBotService();
-		}
 		log.info("参数列表:");
 		log.info("{}-{},{}-{}", symbolA, priceA, symbolB, priceB);
 		log.info("{}/{}现汇率:{},下一卖出汇率:{}，下一买入汇率:{}", symbolA, symbolB, ratio, sellRatio, buyRatio);
@@ -100,12 +80,6 @@ public class Main {
 	@SneakyThrows
 	public static void loop() {
 		while (true) {
-
-			if (stop.get()) {
-				TimeUnit.MINUTES.sleep(5);
-				continue;
-			}
-
 			try {
 				PriceBook priceBookA = MxcClient.getPriceBook(symbolA);
 				PriceBook priceBookB = MxcClient.getPriceBook(symbolB);
@@ -138,23 +112,8 @@ public class Main {
 					log.info("	完成卖B买A:最新买入汇率:{},卖出汇率:{}", buyRatio, sellRatio);
 				}
 				TimeUnit.SECONDS.sleep(30);
-			} catch (Exception ex) {
-				if (ex instanceof IOException) {
-					log.error(ex.getMessage());
-					try {
-						TimeUnit.MINUTES.sleep(3);
-					} catch (InterruptedException e) {
-						throw new RuntimeException(e);
-					}
-					continue;
-				}
-				if (Objects.isNull(telegramBotService)) {
-					// 没开启TgBot、直接抛出异常
-					throw ex;
-				}
-				log.error(ex.getMessage(), ex);
-				stop.set(true);
-				telegramBotService.sendMessage(false, "stop error:\n" + ex.getMessage());
+			} catch (HttpException ex) {
+				throw ex;
 			}
 		}
 	}

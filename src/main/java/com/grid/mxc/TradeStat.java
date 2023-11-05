@@ -1,4 +1,4 @@
-package com.grid.mxc.api;
+package com.grid.mxc;
 
 import lombok.Getter;
 
@@ -48,7 +48,6 @@ public class TradeStat {
 	private BigDecimal usdBalance = BigDecimal.ZERO;
 
 	private static final TradeStat instance = new TradeStat();
-
 
 	public void buyA(BigDecimal qty, BigDecimal volume, BigDecimal usd) {
 		buyTotalQtyA = buyTotalQtyA.add(qty);

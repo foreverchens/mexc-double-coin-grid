@@ -32,10 +32,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 public class MxcClient {
-
-
 	private static final String HEADER_API_KEY = "X-MEXC-APIKEY";
-
 	private static final String AK;
 	private static final String SK;
 	private static final OkHttpClient HTTP_CLIENT;
@@ -146,6 +143,6 @@ public class MxcClient {
 			}
 			TimeUnit.SECONDS.sleep(1);
 		} while (--x > 0);
-		return new Order();
+		return null;
 	}
 }
